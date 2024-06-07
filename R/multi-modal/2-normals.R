@@ -18,7 +18,6 @@ curve(density,-5,30,ylim=c(0,0.5))
 
 # Metropoolis-Hastings
 x = 0
-t = 0
 sample = c(x)
 burn_in = 1000
 target_ss = 10000
