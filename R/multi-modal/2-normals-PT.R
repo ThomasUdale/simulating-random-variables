@@ -15,33 +15,38 @@ curve(density,-5,30,ylim=c(0,0.5))
 # Metropoolis-Hastings
 
 sample = c(0)
-burn_in = 10000
-target_ss = 10000
-temps = c(1,0.7,0.5,0.3,0.1)
+burn_in = 20000
+target_ss = 20000
+temps = 0.5^(0:5)
 nchains = length(temps)
 x = rep(0,nchains)
 
 proposals = 0
+scount = 0
 
+pb = txtProgressBar(min = 0, max = (burnin+num_samples), initial = 0,style=3) 
 while (length(sample)<burn_in+target_ss){
   proposals = proposals + 1
+  setTxtProgressBar(pb,proposals)
   
-  swaps = sample(1:nchains,2)
-  accept_swap = runif(1) < (density(x[swaps[1]],temp=temps[swaps[2]])*density(x[swaps[2]],temp=temps[swaps[1]]))/(density(x[swaps[1]],temp=temps[swaps[1]])*density(x[swaps[2]],temp=temps[swaps[2]]))
-  if (accept_swap){x[swaps] = rev(x[swaps])}
+  swaps = sample(1:(nchains-1),1)
+  accept_swap = runif(1) < (density(x[swaps],temp=temps[swaps+1])*density(x[swaps+1],temp=temps[swaps]))/(density(x[swaps],temp=temps[swaps])*density(x[swaps+1],temp=temps[swaps+1]))
+  if (accept_swap){
+    x[swaps:(swaps+1)] = rev(x[swaps:(swaps+1)])
+    scount = scount + 1
+  }
   
   
   for (i in 1:nchains){
     candidate = rnorm(1,x[i])
-    acceptance = min(1,(density(candidate,temp=temps[i]))/(density(x[i],temp=temps[i])))
-    if (runif(1)<acceptance){
+    if (runif(1)<min(1,(density(candidate,temp=temps[i]))/(density(x[i],temp=temps[i])))){
       x[i] <- candidate
-      if (i == 1){sample <- append(sample,candidate)}
     }
+    if (i == 1){sample <- append(sample,x[i])}
   }
   
 }
 
-
-hist(sample[burn_in+1:length(sample)],add=T,freq=F,nclass=200)
+close(pb)
+hist(sample[(burn_in+1):length(sample)],add=T,freq=F,nclass=200)
 

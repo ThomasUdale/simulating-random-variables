@@ -19,7 +19,7 @@ curve(density,-5,30,ylim=c(0,0.5))
 # Metropoolis-Hastings
 x = 0
 sample = c(x)
-burn_in = 1000
+burn_in = 10000
 target_ss = 10000
 
 proposals = 0
@@ -31,8 +31,8 @@ while (length(sample)<burn_in+target_ss){
   u = runif(1)
   if (u<acceptance){
     x <- candidate
-    sample <- append(sample,candidate)
   }
+  sample <- append(sample,x)
 }
 
 
