@@ -1,15 +1,3 @@
-// num_iter = 1000000
-
-// a = np.sqrt(2/np.e)*(2*np.pi)**(-1/4)
-// b = np.sqrt(1/np.sqrt(2*np.pi))
-
-// u = rnd.uniform(low=0,high=b,size=num_iter)
-// v = rnd.uniform(low=-a,high=+a,size=num_iter)
-// x = v/u
-
-// sample = x[u**2 <= 1/np.sqrt(2*np.pi) * np.exp(-0.5*x**2)]
-
-
 use std::f32::consts::{E, PI};
 use rand::prelude::*;
 
