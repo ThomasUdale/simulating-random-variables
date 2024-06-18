@@ -1,0 +1,10 @@
+[package]
+name = "apt"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+array-init = "2.1.0"
+indicatif = "0.17.8"
+rand = "0.8.5"
+rand_distr = "0.4.3"

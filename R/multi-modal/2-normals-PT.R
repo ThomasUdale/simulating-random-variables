@@ -14,7 +14,7 @@ curve(density,-5,30,ylim=c(0,0.5))
 
 # Metropoolis-Hastings
 
-sample = c(0)
+sample = c()
 burn_in = 20000
 target_ss = 20000
 temps = 0.5^(0:5)
