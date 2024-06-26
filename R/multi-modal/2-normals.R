@@ -1,13 +1,10 @@
 # Simulate from mixture of two normals:
-sample_size = 1000000
 p = 0.3
 mu1 = 1
 sigma1 = 1
 mu2 = 20
 sigma2 = 4
-k <- rbinom(1,sample_size,p)
-sample = c(rnorm(k,mu1,sigma1),rnorm(sample_size-k,mu2,sigma2))
-hist(sample,freq = F)
+
 
 density <- function(x){
   p*dnorm(x,mu1,sigma1) + (1-p)*dnorm(x,mu2,sigma2)
@@ -16,7 +13,7 @@ density <- function(x){
 curve(density,-5,30,ylim=c(0,0.5))
 
 
-# Metropoolis-Hastings
+# Metropolis-Hastings
 x = 0
 sample = c(x)
 burn_in = 10000

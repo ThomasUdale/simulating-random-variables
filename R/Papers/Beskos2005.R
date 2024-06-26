@@ -1,5 +1,5 @@
 # Simulate start point
-starting_sample_size = 1000000
+starting_sample_size = 10000
 end_h = rnorm(starting_sample_size)
 end_accept = ifelse(runif(starting_sample_size) < exp(-cos(end_h)-1),TRUE, FALSE)
 end_h = end_h[end_accept]

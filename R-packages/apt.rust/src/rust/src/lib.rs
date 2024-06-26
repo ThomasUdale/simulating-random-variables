@@ -5,27 +5,29 @@ use array_init::array_init;
 use rand::prelude::*;
 use rand_distr::StandardNormal;
 
-const P:f64 = 0.3;
-const MU1:f64 = 1.0;
-const SD1: f64 = 1.0;
-const MU2:f64 = 20.0;
-const SD2:f64 = 4.0;
-
 const L:usize = 5;
 const ASTAR:f64 = 0.234;
-
 
 
 fn normal_density(x:f64,mean:f64,sd:f64)->f64 {
     1.0/(2.0*PI*sd.powf(2.0)).powf(0.5)*E.powf(-0.5*((x-mean)/sd).powf(2.0))
 }
 
-fn density(x:f64,inv_temp:f64)->f64 {
-    (P*normal_density(x, MU1, SD1)+(1.0-P)*normal_density(x, MU2, SD2)).powf(inv_temp)
+fn target_density(x:f64,inv_temp:f64,p:f64,mu1:f64,sd1:f64,mu2:f64,sd2:f64)->f64 {
+    (p*normal_density(x, mu1, sd1)+(1.0-p)*normal_density(x, mu2, sd2)).powf(inv_temp)
 }
 
 #[extendr]
-fn apt(burn:i32,ss:i32,adapt:bool)-> Vec<f64> {
+fn apt(
+  burn:i32,
+  ss:i32,
+  adapt:bool,
+  p:f64,mu1:f64,sd1:f64,mu2:f64,sd2:f64
+)-> Vec<f64> {
+
+    let density = |x,inv_temp| {
+      target_density(x,inv_temp,p,mu1,sd1,mu2,sd2)
+    };
 
     let burn = burn as usize;
     let ss = ss as usize;

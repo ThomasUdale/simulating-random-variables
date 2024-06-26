@@ -15,7 +15,7 @@ NULL
 #' @export
 hello_world <- function() .Call(wrap__hello_world)
 
-apt <- function(burn, ss, adapt) .Call(wrap__apt, burn, ss, adapt)
+apt <- function(burn, ss, adapt, p, mu1, sd1, mu2, sd2) .Call(wrap__apt, burn, ss, adapt, p, mu1, sd1, mu2, sd2)
 
 
 # nolint end
