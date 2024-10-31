@@ -1,4 +1,3 @@
-devtools::load_all("~/Documents/simulating-random-variables/R-packages/pseudo.fusion/")
 use("pseudo.fusion")
 
 target_draw = list(
@@ -34,12 +33,12 @@ r = 1e-10
 samples = c()
 n = 0
 accepts = 0
-burn = 10000
-target= 50000
-num_is = 1000
-
-sample_rust = mixture_fusion_example(burn,target,num_is)
-hist(sample_rust,col='red',add=T,freq=F,nclass=100)
+# burn = 20000
+# target= 20000
+# num_is = 10000
+# 
+# sample_rust = mixture_fusion_example(burn,target,num_is)
+# hist(sample_rust,col='red',add=T,freq=F,nclass=100)
 
 burn = 10000
 target= 10000
@@ -58,7 +57,7 @@ while (n<(burn+target)) {
     r_star = 1
     for (c in 1:num_dist) {
       x = target_draw[[c]]()
-      r_star = r_star*min((target_dists[[c]](ynew)/target_dists[[c]](x)),1)*dnorm(ynew,x)
+      r_star = r_star*min((target_dists[[c]](ynew)/target_dists[[c]](x))*dnorm(x,ynew),dnorm(ynew,x))
     }
     new_r = new_r + r_star/num_is
   }
