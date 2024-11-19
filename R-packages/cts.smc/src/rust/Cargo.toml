@@ -1,0 +1,16 @@
+[package]
+name = 'cts_smc'
+publish = false
+version = '0.1.0'
+edition = '2021'
+
+[lib]
+crate-type = [ 'staticlib' ]
+name = 'cts_smc'
+
+[dependencies]
+array-init = "2.1.0"
+extendr-api = '*'
+rand = "0.8.5"
+rand_distr = "0.4.3"
+statrs = "0.17.1"

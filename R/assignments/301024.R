@@ -5,34 +5,34 @@ library(progress)
 library(parallel)
 library(layeredBB)
 library(RcppZiggurat)
+# devtools::build("~/Documents/simulating-random-variables/R-packages/cts.smc")
+devtools::load_all("~/Documents/simulating-random-variables/R-packages/cts.smc")
 
-ss = 100000
+cts_smc_rust(1,1)
 
-interval_time = 8
-target_time = 4
 
 l = -0.5
 r = 9/8
 phi <- function(x) {
-  (sin(x-pi)^2 + cos(x-pi))/2
+  (sin(x)^2 + cos(x))/2
 }
 
 sim_end <- function(t) {
   while (T) {
     u <- rnorm(1,0,sqrt(t))
-    if (runif(1) < exp(-cos(u-pi)-1)) {
+    if (runif(1) < exp(-cos(u)-1)) {
       return(u)
     }
   }
 }
 
-ea1 <- function(id,t,return_path=F){
+ea1 <- function(id,x,t,return_path=F){
   while (T){
     y <- sim_end(t)
     k <- rpois(1,r*t)
     if (k==0){
       if (return_path){
-        return(data.frame(t=c(0,t),w=c(0,y)))
+        return(data.frame(t=c(0,t),w=c(x,y)))
       } else {
         return(y)
       }
@@ -40,7 +40,7 @@ ea1 <- function(id,t,return_path=F){
     skel_t <- sort(runif(k,0,t))
     skel_u <- runif(k,0,r)
     bb <- Brownian_bridge_path_sampler(
-      x=0,
+      x=x,
       y=y,
       s=0,
       t=t,
@@ -55,29 +55,6 @@ ea1 <- function(id,t,return_path=F){
     }
   }
 }
-print(Sys.time())
-exact <- data.frame(w=unlist(parallel::mclapply(c(1:ss),ea1,t=target_time,mc.cores=8)))
-
-ea1_inter <- function(id,t_target,t_interval,return_path=F){
-  skeleton <- ea1(NaN,t_interval,T)
-  end_ind <- which(skeleton$t>=t_target,arr.ind=T)[1]
-  bb <- Brownian_bridge_path_sampler(
-    x=skeleton$w[end_ind-1],
-    y=skeleton$w[end_ind],
-    s=skeleton$t[end_ind-1],
-    t=skeleton$t[end_ind],
-    times=t_target
-  )
-  
-  if (!return_path){
-    return(bb$simulated_path[1])
-  } else {
-    return(rbind(skeleton,c(t_target,b <- bb$simulated_path[1])))
-  }
-}
-
-print(Sys.time())
-# exact_i <- data.frame(w=unlist(pbmcapply::pbmclapply(c(1:ss),ea1_inter,t_target=target_time,t_interval=interval_time,mc.cores = 8)))
 
 cts_smc <- function(id,t_target,n_particles){
   t <- 0
@@ -103,7 +80,6 @@ cts_smc <- function(id,t_target,n_particles){
       if (runif(1) < max(-phi(x[test_particle]),0)/(1/2)) {
         killed_particle <- dqrng::dqsample.int(n_particles,1)
         if (killed_particle!=test_particle){
-          x[killed_particle] <- dqrng::dqrnorm(1,x[killed_particle],sqrt(new_t-last_sample_time[killed_particle])) 
           last_sample_time[killed_particle] <- new_t
           x[killed_particle] <- x[test_particle]
         }
@@ -116,17 +92,43 @@ cts_smc <- function(id,t_target,n_particles){
   return(x)
 }
 
-print(Sys.time())
-cts_smc_sample=cts_smc(1,target_time,ss)
-print(Sys.time())
-cts_smc_sample <- data.frame(w=cts_smc_sample)
-# cts_smc_sample <- data.frame(w=unlist(pbmcapply::pbmclapply(c(1:8),cts_smc,t_target=target_time,n_particles=ss/8,mc.cores = 8)))
+euler_approx <- function(id,t_target,n_intervals) {
+  eps <- t_target/n_intervals
+  x <- 0
+  for (i in 1:n_intervals) {
+    x <- x + sin(x)*eps + rnorm(1,0,sqrt(eps))
+  }
+  return(x)
+}
 
-print(Sys.time())
+ss=1e5
+target_time = 10*pi
+
+# start_time <- proc.time()
+# exact = pbmcapply::pbmclapply(c(1:ss),ea1,x=0,t=target_time,mc.cores=8)
+# print(proc.time()-start_time)
+# exact <- data.frame(w=unlist(exact))
+
+# start_time <- proc.time()
+# euler = pbmcapply::pbmclapply(c(1:ss),euler_approx,t_target=target_time,n_intervals=1e4,mc.cores=8)
+# print(proc.time()-start_time)
+# euler <- data.frame(w=unlist(euler))
+
+start_time <- proc.time()
+cts_smc_sample_r <- cts_smc_rust(ss,target_time)
+print(proc.time()-start_time)
+cts_smc_sample_r <- data.frame(w=cts_smc_sample_r)
+
+start_time <- proc.time()
+euler_r <- euler_approx_rust(ss,target_time,1e4)
+print(proc.time()-start_time)
+euler_r <- data.frame(w=euler_r)
+
+
 plot <-
   ggplot()+
-  # geom_histogram(data=exact,aes(x=w,y=..density..),binwidth=0.1)+
-  geom_density(data=exact,aes(x=w),col='green')+
-  geom_density(data=exact_i,aes(x=w),col='blue')+
-  geom_density(data=cts_smc_sample,aes(x=w),col='red')
+  # geom_density(data=exact,aes(x=w),col='green')+
+  geom_density(data=euler_r,aes(x=w),col='red')+
+  geom_density(data=cts_smc_sample_r,aes(x=w),col='blue')+
+  xlim(-12,12)
 print(plot)
