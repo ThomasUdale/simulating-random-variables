@@ -101,6 +101,7 @@ fn cts_smc_rust(ss: i32, target_time: f64) -> Vec<f64> {
   final_sample
 }
 
+#[extendr]
 fn brownian_bridge(rng: &mut ThreadRng,x:&f64,y:&f64,s:&f64,t:&f64,times:&Vec<f64>) -> Vec<f64> {
   let std_n = Normal::new(0.0, 1.0).unwrap();
   let mut bm: Vec<f64> = Vec::new();
@@ -400,6 +401,7 @@ extendr_module! {
     fn euler_approx_rust;
     fn brownian_motion_fpt;
     fn brownian_motion_fpt2;
+    fn brownian_bridge;
     fn algo5;
     fn a6;
 }

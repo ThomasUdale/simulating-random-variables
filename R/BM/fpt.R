@@ -47,16 +47,7 @@ sn2 <- function(x) {
 }
 
 sn3 <- function(x) {
-  (dnorm(x,1,1/2)-dnorm(x,1,9/2)+dnorm(x,1,25/2))
-}
-
-sim3 <- function() {
-  while(TRUE){
-    x <- if (runif(1)<0.5) {1/rgamma(1,0.5,rate=1/2)} else {1/rgamma(1,0.5,rate=25/2)}
-    if (runif(1)>(0.5*dinvgamma(x,0.5,9/2)/(0.5*(dinvgamma(x,0.5,1/2)+dinvgamma(x,0.5,25/2))))) {
-      return(x)
-    }
-  }
+  2*(dinvgamma(x,1/2,rate=1/2)+dinvgamma(x,1/2,rate=25/2)-dinvgamma(x,1/2,rate=9/2))
 }
 
 
@@ -69,6 +60,7 @@ lines(density(e),col='green')
 e <- replicate(ss,sim())
 lines(density(e),col='red')
 
+# curve(sn2,add=T,xlim=c(1e-4,6),col='orange')
 curve(sn3,add=T,xlim=c(1e-4,6),col='blue')
 
 

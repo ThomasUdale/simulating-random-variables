@@ -1,0 +1,17 @@
+[package]
+name = 'bm_rust'
+publish = false
+version = '0.1.0'
+edition = '2021'
+
+[lib]
+crate-type = [ 'staticlib' ]
+name = 'bm_rust'
+
+[dependencies]
+extendr-api = '*'
+array-init = "2.1.0"
+rand = "0.8.5"
+rand_distr = "0.4.3"
+statrs = "0.17.1"
+
