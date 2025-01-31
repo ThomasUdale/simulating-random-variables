@@ -45,10 +45,10 @@ sub_post <- function(c) {
   log_reg_posterior(X[c((m/C*(c-1)+1):(m/C*c)),],y[c((m/C*(c-1)+1):(m/C*c))],ss,burn,C)
 }
 
-# m = 1000
-# x <- rnorm(m,0.2,1)
-# X <- cbind(rep(1,m),x)
-# y <- rbinom(m,1,p(X,true_beta))
+m = 1000
+x <- rnorm(m,0.2,1)
+X <- cbind(rep(1,m),x)
+y <- rbinom(m,1,p(X,true_beta))
 # 
 # print(sum(y))
 # 
