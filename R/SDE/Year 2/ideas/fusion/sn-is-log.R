@@ -57,28 +57,20 @@ sub_post <- function(c) {
 }
 
 
+snis_single<- function(i) {
+  j <- sample.int(ss,C,replace=T)
+  sj <- do.call(cbind, lapply(c(1:C),function(c){sub_post_sample[j[c],,c]}))
+  mu <- rowMeans(sj)
+  sigma <- diag((apply(sj,1,sd)^2))
+  # sigma <- diag(2)
+  y <- rmvnorm(1,mu,sigma)
+  w <- sum(unlist(lapply(c(1:C),log_likelihood,beta=y))) - log(dmvnorm(y,mu,sigma))
+  return(c(y,exp(w)))
+}
 
-
-snis <- function(n) {
-  
-  pb <- progress_bar$new(
-    format = "sampling [:bar] :current/:total (:percent) eta: :eta, elapsed: :elapsed",
-    clear = FALSE, total = (n), width = 80)
-  
-  out <- c()
-  
-  for(i in 1:n){
-    pb$tick()
-    j <- sample.int(ss,C,replace=T)
-    sj <- do.call(cbind, lapply(c(1:C),function(c){sub_post_sample[j[c],,c]}))
-    mu <- rowMeans(sj)
-    sigma <- diag(2)
-    y <- rmvnorm(1,mu,sigma)
-    w <- sum(unlist(lapply(c(1:C),log_likelihood,beta=y))) - log(dmvnorm(y,mu,sigma))
-    out <- rbind(out,c(y,exp(w)))
-  }
-  pb$terminate()
-  return(out)
+snis_par<-function(n) {
+  out <- pbmcapply::pbmclapply(c(1:n),snis_single,mc.cores=8)
+  do.call(rbind,out)
 }
 
 m = 1000
@@ -93,28 +85,22 @@ dimnames(sub_post_sample) <- list(c(1:ss),c(1:2),c(1:C))
 sub_post_sample_df <- melt(sub_post_sample)
 
 
-out1 <- snis(1e4)
-out2 <- snis(1e5)
-out3 <- snis(1e6)
+out <- snis_par(1e5)
 
 plot1 <- ggplot()+
-  xlim(-5,0)+
+  xlim(-6,-1)+
   geom_density(data=subset(sub_post_sample_df,Var2==1),aes(x=value,group=Var3),col='blue',alpha=0.05)+
   geom_density(aes(x=full_post_sample[,1]),col='black',alpha=0.8)+
-  geom_density(aes(x=out1[,1],weight=out1[,3]),col='red')+
-  geom_density(aes(x=out2[,1],weight=out2[,3]),col='orange')+
-  geom_density(aes(x=out3[,1],weight=out3[,3]),col='green')
+  geom_density(aes(x=out[,1],weight=out[,3]),col='red',alpha=0.4)
   
 
 plot2 <- ggplot()+
-  xlim(-3,1.5)+
+  xlim(-4,1)+
   geom_density(data=subset(sub_post_sample_df,Var2==2),aes(x=value,group=Var3),col='blue',alpha=0.05)+
   geom_density(aes(x=full_post_sample[,2]),col='black',alpha=0.8)+
-  geom_density(aes(x=out1[,2],weight=out1[,3]),col='red')+
-  geom_density(aes(x=out2[,2],weight=out2[,3]),col='orange')+
-  geom_density(aes(x=out3[,2],weight=out3[,3]),col='green')
+  geom_density(aes(x=out[,2],weight=out[,3]),col='red',alpha=0.4)
 
 print(plot1+plot2)
-
+  
 
 
