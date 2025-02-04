@@ -1,10 +1,10 @@
 library('MASS')
 library('progress')
-library(layeredBB)
 library(parallel)
 library(ggplot2)
 library(patchwork)
 library(reshape2)
+library(mvtnorm)
 
 C = 40
 
@@ -69,38 +69,51 @@ snis_single<- function(i) {
 }
 
 snis_par<-function(n) {
-  out <- pbmcapply::pbmclapply(c(1:n),snis_single,mc.cores=8)
+  out <- pbmcapply::pbmclapply(c(1:n),snis_single,mc.cores=12)
   do.call(rbind,out)
 }
 
-m = 1000
-x <- rnorm(m,0.7,1)
-X <- cbind(rep(1,m),x)
-y <- rbinom(m,1,p(X,true_beta))
-print(sum(y))
+calc_iad <- function() {
+  iad <- 0
+  for (var_id in c(1:2)){
+    iad <- iad + sum(abs(density(out[,var_id],weights=out[,3]/sum(out[,3]),from=-10,to=10,n=2000)$y - density(full_post_sample[,var_id],from=-10,to=10,n=2000)$y))/2000*20
+  }
+  iad/2
+}
 
-full_post_sample <- log_reg_posterior(X,y,ss,burn,C)
-sub_post_sample <- simplify2array(pbmcapply::pbmclapply(c(1:C),sub_post,mc.cores=4))
-dimnames(sub_post_sample) <- list(c(1:ss),c(1:2),c(1:C))
-sub_post_sample_df <- melt(sub_post_sample)
+# m = 1000
+# x <- rnorm(m,0.7,1)
+# X <- cbind(rep(1,m),x)
+# y <- rbinom(m,1,p(X,true_beta))
+# print(sum(y))
+# 
+# full_post_sample <- log_reg_posterior(X,y,ss,burn,C)
+# sub_post_sample <- simplify2array(pbmcapply::pbmclapply(c(1:C),sub_post,mc.cores=8))
+# dimnames(sub_post_sample) <- list(c(1:ss),c(1:2),c(1:C))
+# sub_post_sample_df <- melt(sub_post_sample)
+
+for (n in c(1e4,1e5,1e6,1e7)) {
+  out <- snis_par(n)
+  print(calc_iad())
+  
+  plot1 <- ggplot()+
+    xlim(-8,1)+
+    geom_density(data=subset(sub_post_sample_df,Var2==1),aes(x=value,group=Var3),col='blue',alpha=0.05)+
+    geom_density(aes(x=full_post_sample[,1]),col='black',alpha=0.8)+
+    geom_density(aes(x=out[,1],weight=out[,3]),col='red',alpha=0.4)
+  
+  
+  plot2 <- ggplot()+
+    xlim(-4,3)+
+    geom_density(data=subset(sub_post_sample_df,Var2==2),aes(x=value,group=Var3),col='blue',alpha=0.05)+
+    geom_density(aes(x=full_post_sample[,2]),col='black',alpha=0.8)+
+    geom_density(aes(x=out[,2],weight=out[,3]),col='red',alpha=0.4)
+  
+  print(plot1+plot2)
+}
 
 
-out <- snis_par(1e5)
-
-plot1 <- ggplot()+
-  xlim(-6,-1)+
-  geom_density(data=subset(sub_post_sample_df,Var2==1),aes(x=value,group=Var3),col='blue',alpha=0.05)+
-  geom_density(aes(x=full_post_sample[,1]),col='black',alpha=0.8)+
-  geom_density(aes(x=out[,1],weight=out[,3]),col='red',alpha=0.4)
   
 
-plot2 <- ggplot()+
-  xlim(-4,1)+
-  geom_density(data=subset(sub_post_sample_df,Var2==2),aes(x=value,group=Var3),col='blue',alpha=0.05)+
-  geom_density(aes(x=full_post_sample[,2]),col='black',alpha=0.8)+
-  geom_density(aes(x=out[,2],weight=out[,3]),col='red',alpha=0.4)
-
-print(plot1+plot2)
-  
 
 
