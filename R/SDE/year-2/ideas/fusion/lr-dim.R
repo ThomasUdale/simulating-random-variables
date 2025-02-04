@@ -63,7 +63,7 @@ snis_single<- function(i) {
 }
 
 snis_par<-function(n) {
-  out <- pbmcapply::pbmclapply(c(1:n),snis_single,mc.cores=6)
+  out <- pbmcapply::pbmclapply(c(1:n),snis_single,mc.cores=8)
   do.call(rbind,out)
 }
 
@@ -100,13 +100,13 @@ sub_post_sample <- simplify2array(pbmcapply::pbmclapply(c(1:C),sub_post,mc.cores
 dimnames(sub_post_sample) <- list(c(1:ss),c(1:(d+1)),c(1:C))
 sub_post_sample_df <- melt(sub_post_sample)
 
-for (n in c(1e4,1e5,1e6,1e6,1e6)) {
+for (n in c(1e6,1e6,1e6)) {
   out <- snis_par(n)
   dimnames(out) <- list(c(1:n),c(1:(d+2)))
   out_df <- melt(out[,c(1:(d+1))])
   out_df$weight <- rep(out[,5],d+1)
   print(calc_iad(d))
-  
+
   l <- vector("list",d+1)
 
   for (pltid in c(1:(d+1))){
@@ -117,7 +117,7 @@ for (n in c(1e4,1e5,1e6,1e6,1e6)) {
       geom_density(data=subset(out_df,Var2==pltid),aes(x=value,weight=weight),col='red',alpha=0.4)+
       geom_vline(xintercept=true_beta[pltid],col='green')
   }
-  
+
   print(wrap_plots(l))
 
 }
