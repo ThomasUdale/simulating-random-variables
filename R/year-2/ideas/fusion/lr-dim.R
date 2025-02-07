@@ -63,7 +63,7 @@ snis_single<- function(i) {
 }
 
 snis_par<-function(n) {
-  out <- pbmcapply::pbmclapply(c(1:n),snis_single,mc.cores=8)
+  out <- pbmcapply::pbmclapply(c(1:n),snis_single,mc.cores=12)
   do.call(rbind,out)
 }
 
@@ -75,12 +75,40 @@ calc_iad <- function(d) {
   iad/(d+1)
 }
 
+resample <- function(s,d,m){
+  remaining_weight <- sum(s[,d+1])
+  remaining_ids <- c(1:nrow(s))
+  running_max_w <- max(s[remaining_ids,d+1])
+  out_s <- c()
+  pb <- progress_bar$new(
+    format = "sampling [:bar] :current/:total (:percent) eta: :eta, elapsed: :elapsed",
+    clear = FALSE, total = (m), width = 80)
+  for (k in 1:m){
+    pb$tick()
+    id_found <- FALSE
+    while(!id_found){
+      id <- sample(remaining_ids,1,prob=s[remaining_ids,d+1])
+      id_weight <-s[id,d+1]
+      if ((remaining_weight - k*running_max_w)<0){
+        id_found=TRUE
+      } else if (runif(1)<(remaining_weight-k*running_max_w)/(remaining_weight-k*id_weight)) {
+        id_found=TRUE
+      }
+    }
+    remaining_ids <- remaining_ids[-c(id)]
+    remaining_weight = remaining_weight-s[id,d+1]
+    out_s <- rbind(out_s,s[id,1:d])
+  }
+  pb$terminate()
+  return(out_s)
+}
+
 C = 40
 
 set.seed(1)
 
 d=3
-true_beta = c(-2,rnorm(d,0,2))
+true_beta = c(-0,rnorm(d,1,2))
 print(true_beta)
 
 ss = 10000
@@ -100,11 +128,12 @@ sub_post_sample <- simplify2array(pbmcapply::pbmclapply(c(1:C),sub_post,mc.cores
 dimnames(sub_post_sample) <- list(c(1:ss),c(1:(d+1)),c(1:C))
 sub_post_sample_df <- melt(sub_post_sample)
 
-for (n in c(1e6,1e6,1e6)) {
+for (n in c(1e4)) {
   out <- snis_par(n)
   dimnames(out) <- list(c(1:n),c(1:(d+2)))
+  out_resample <- melt(resample(out[out[,d+2]!=0,],d+1,1e3))
   out_df <- melt(out[,c(1:(d+1))])
-  out_df$weight <- rep(out[,5],d+1)
+  out_df$weight <- rep(out[,d+2],d+1)
   print(calc_iad(d))
 
   l <- vector("list",d+1)
@@ -115,6 +144,7 @@ for (n in c(1e6,1e6,1e6)) {
       geom_density(data=subset(sub_post_sample_df,Var2==pltid),aes(x=value,group=Var3),col='blue',alpha=0.05)+
       geom_density(data=subset(full_post_sample_df,Var2==pltid),aes(x=value),col='black',alpha=0.8)+
       geom_density(data=subset(out_df,Var2==pltid),aes(x=value,weight=weight),col='red',alpha=0.4)+
+      geom_density(data=subset(out_resample,Var2==pltid),aes(x=value),col='orange',alpha=0.4)+
       geom_vline(xintercept=true_beta[pltid],col='green')
   }
 

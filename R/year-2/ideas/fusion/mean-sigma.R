@@ -4,6 +4,9 @@ f <- function(x) {
   dnorm(x,4,sqrt(2/3))
 }
 
+grad_log_fc <- function(x,c){
+  -(x-mu[c])/sigma[c]^2
+}
 
 mu = c(10,1)
 sigma = c(sqrt(2),1)
@@ -16,28 +19,38 @@ samplefc <- function(c) {
   rnorm(1,mu[c],sigma[c])
 }
 
-N <- 1e5
+N <- 1e6
 
 s1 <- rnorm(N,mu[1],sigma[1])
 s2 <- rnorm(N,mu[2],sigma[2])
 
+grad1 <- grad_log_fc(s1,1)
+grad2 <- grad_log_fc(s2,2)
+
+grads <- abs(grad1)+abs(grad2)
+
 means <- rowMeans(cbind(s1,s2))
 
-s <- rnorm(N,means)
+s <- rnorm(N,means,grads)
 
-weights <- (dnorm(s,mu[1],sigma[1])*dnorm(s,mu[2],sigma[2]))/dnorm(s,means)
-
-weighted_means <- sample(s,N,replace=T,prob=weights)
+weights <- (dnorm(s,mu[1],sigma[1])*dnorm(s,mu[2],sigma[2]))/dnorm(s,means,grads)
 
 plot <- ggplot()+
   xlim(-3,15)+
+  ylim(0,0.5)+
   geom_density(aes(x=s1),col='red',alpha=0.7)+
   geom_density(aes(x=s2),col='green',alpha=0.7)+
   geom_density(aes(x=s,weight=weights),col='orange',alpha=0.2)+
-  geom_density(aes(x=s),alpha=0.2)+
   geom_function(fun=f,col='blue')
 
 print(plot)
+
+iad <- function(samples,weights){
+  d <- density(samples,weights = weights/sum(weights),from=-10,to=10,n=2000)
+  sum(abs(d$y - f(d$x)))/2000*20
+}
+
+print(iad(s,weights))
 
 
 ################################ EXP 
