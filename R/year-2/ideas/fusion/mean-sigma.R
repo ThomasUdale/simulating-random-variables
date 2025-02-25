@@ -4,6 +4,9 @@ f <- function(x) {
   dnorm(x,4,sqrt(2/3))
 }
 
+grad_log_fc <- function(x,c){
+  -(x-mu[c])/sigma[c]^2
+}
 
 mu = c(10,1)
 sigma = c(sqrt(2),1)
@@ -21,11 +24,16 @@ N <- 1e6
 s1 <- rnorm(N,mu[1],sigma[1])
 s2 <- rnorm(N,mu[2],sigma[2])
 
+grad1 <- grad_log_fc(s1,1)
+grad2 <- grad_log_fc(s2,2)
+
+grads <- abs(grad1)+abs(grad2)
+
 means <- rowMeans(cbind(s1,s2))
 
-s <- rnorm(N,means)
+s <- rnorm(N,means,grads)
 
-weights <- (dnorm(s,mu[1],sigma[1])*dnorm(s,mu[2],sigma[2]))/dnorm(s,means)
+weights <- (dnorm(s,mu[1],sigma[1])*dnorm(s,mu[2],sigma[2]))/dnorm(s,means,grads)
 
 plot <- ggplot()+
   xlim(-3,15)+

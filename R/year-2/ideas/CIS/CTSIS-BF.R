@@ -4,23 +4,25 @@ library(mvtnorm)
 library(progress)
 
 f <- function(x) {
-  dnorm(x,0,sqrt(0.5))
+  dnorm(x,4,sqrt(2/3))
 }
 
-mu_0 = 1
-mu = c(0.5*mu_0,-0.5*mu_0)
+
+mu = c(10,1)
+sigma = c(sqrt(2),1)
+
 C = length(mu)
 
 fc <- function(x,c) {
-  dnorm(x,mu[c],1)
+  dnorm(x,mu[c],sigma[c])
 }
 
 samplefc <- function(c) {
-  rnorm(1,mu[c],1)
+  rnorm(1,mu[c],sigma[c])
 }
 
 phi <- function(x,c) {
-  0.5 * ((x-mu[c])^2-1) + 0.5
+  0.5 * ((x-mu[c])^2/sigma[c]^2-1) + 0.5
 }
 
 
@@ -63,7 +65,7 @@ mcf <- function(phi,r,t) {
 }
 
 alpha <- function(x,c){
-  -(x-mu[c])
+  -(x-mu[c])/sigma[c]^2
 }
 lambda <- function(s) {
   1 * s^(0.5-1)
@@ -78,10 +80,10 @@ gamma_pp <- function(x) {
   0
 }
 b <- function(x,c) {
-  -(x-mu[c])
+  -(x-mu[c])/sigma[c]^2
 }
 b_p <- function(x,c){
- -1
+ -1/sigma[c]^2
 }
 
 rho <- function(x,y,u,c){
@@ -112,17 +114,20 @@ q_den <- function(theta,x,y,event_time) {
   )
 }
 
-ctsis_bf <- function(t){
+ctsis_bf <- function(id,t){
   tau <- 0
   x <- sapply(1:C, samplefc)
   theta <- cbind(mapply(b,x=x,c=c(1:C)),gamma(x))
   w <- exp(-sum((x-mean(x))^2)/(2*t))
   while(TRUE) {
-    event_time <- (-0.5*log(runif(1))/1)^(1/0.5)
+    event_time <- (-0.2*log(runif(1))/1)^(1/0.2)
     new_tau <- tau + event_time
+    print(new_tau)
     if (new_tau>t){
-      x <- g_prop(x,tau,t,t,C)
-      return(c(x[1],w))
+      for (c in 1:C){
+        w <- w*q_den(theta[c,],x[c],mean(x),t-tau)
+      }
+      return(c(mean(x),w))
     } else {
       new_x <- g_prop(x,tau,t,new_tau,C)
       w <- w/g_den(new_x,x,tau,t,new_tau,C)
@@ -137,20 +142,21 @@ ctsis_bf <- function(t){
 }
 
 ctsis_bf_resample <- function(t,n) {
-  pb <- progress_bar$new(
-    format = "sampling [:bar] (:percent) eta: :eta, elapsed: :elapsed",
-    clear = FALSE, total = t, width = 80,force = TRUE)
   tau <- 0
   x <- matrix(sapply(rep(1:C,times=n),samplefc),nrow=C)
   theta_b <- cbind(sapply(c(1:C),function(y) b(x[y,],y)))
   w <- exp(-colSums(scale(x,scale=F)^2)/2*t)
   while(tau<t) {
-    event_time <- (-0.5*log(runif(1))/1)^(1/0.5)
+    event_time <- (-0.3*log(runif(1))/1)^(1/0.3)
     new_tau <- tau + event_time
     if (new_tau>t){
-      x <- apply(x,2,g_prop,s=tau,tt=t,t=t,C)
-      pb$terminate()
-      return(rbind(x[1,],w))
+      new_x <- colMeans(x)
+      for (c in 1:C){
+        for( i in 1:n){
+          w[i] <- w[i]*q_den(c(theta_b[i,c],1),x[c,i],new_x[c],t-tau)
+        }
+      }
+      return(rbind(new_x,w))
     } else {
       new_x <- apply(x,2,g_prop,s=tau,tt=t,t=new_tau,C)
       for(i in 1:n){
@@ -161,60 +167,69 @@ ctsis_bf_resample <- function(t,n) {
           w[i] <- w[i]*rho(x[c,i],new_x[c,i],event_time,c)*q_den(c(theta_b[i,c],1),x[c,i],new_x[c,i],event_time)
         }
       }
+      
       x <- new_x
+      # resampling
+      # ess <- sum(abs(w))/(sum(w^2))
+      # print(c(tau,ess))
+      # new_ids <- sample(n,replace=T,prob=abs(w))
+      # w <- sign(w[new_ids])*sum(abs(w))/n
+      # x <- x[,new_ids]
+      print(c(tau,sum(abs(w))))
+      
       theta_b <- cbind(sapply(c(1:C),function(y) b(x[y,],y)))
       tau <- new_tau
-      pb$update(tau/t)
+      
     }
   }
 }
 
+ptm <- proc.time()
+bf_out <- do.call(rbind,pbmcapply::pbmclapply(c(1:1e4),ctsis_bf,t=1,mc.cores=8))
+print(proc.time()-ptm)
+print(mean(bf_out[1,]*bf_out[2,]))
+ggplot()+xlim(0,10)+geom_point(aes(x=bf_out[1,],y=bf_out[2,]))+geom_density(aes(bf_out[1,]))+geom_function(fun=f)
 # ptm <- proc.time()
-# bf_out <- pbapply::pbreplicate(1e5,ctsis_bf(1))
-# print(proc.time()-ptm)
-# print(mean(bf_out[1,]*bf_out[2,]))
-# 
-# ptm <- proc.time()
-# mcf_out <- pbapply::pbreplicate(1e5,mcf(phi,find_bound,1))
+# mcf_out <- pbapply::pbreplicate(1e4,mcf(phi,find_bound,1))
 # print(proc.time()-ptm)
 # print(mean(mcf_out))
 # 
 # ptm <- proc.time()
-# out <- t(ctsis_bf_resample(1,1e5))
+# out <- t(ctsis_bf_resample(1,1e4))
 # print(proc.time()-ptm)
 # print(mean(out[,1]*out[,2]))
 
 
 #re-weighting to eliminate negative weights. 
-
-out2 <- out[order(out[,1]),]
-
-while(min(out2[,2])<0) {
-  print(min(out2[,2]))
-  cur_id <- which.min(out2[,2])
-  resolved <- FALSE
-  idx <- 0
-  l <- cur_id
-  u <- cur_id
-  while (!resolved){
-    idx <- -idx
-    if (idx>=0){
-      idx <- idx+1
-      u <- min(1e5,cur_id+idx)
-    } else {
-      l <- max(1,cur_id+idx)
-    }
-    s <- sum(out2[l:u,2])
-    if (s>0) {
-      out2[l:u,2] <- s/(u-l)
-      resolved <- TRUE
-    }
-  }
-}
-
-plot <- ggplot()+
-  geom_histogram(aes(x=mcf_out,y=after_stat(density)))+
-  geom_vline(xintercept=mean(bf_out[1,]*bf_out[2,]))+
-  geom_density(aes(x=out2[,1],weight=out2[,2]),col='red')+
-  geom_function(fun=f)
-print(plot)
+# 
+# out2 <- out[order(out[,1]),]
+# 
+# while(min(out2[,2])<0) {
+#   print(min(out2[,2]))
+#   cur_id <- which.min(out2[,2])
+#   resolved <- FALSE
+#   idx <- 0
+#   l <- cur_id
+#   u <- cur_id
+#   while (!resolved){
+#     idx <- -idx
+#     if (idx>=0){
+#       idx <- idx+1
+#       u <- min(1e5,cur_id+idx)
+#     } else {
+#       l <- max(1,cur_id+idx)
+#     }
+#     s <- sum(out2[l:u,2])
+#     if (s>0) {
+#       out2[l:u,2] <- s/(u-l)
+#       resolved <- TRUE
+#     }
+#   }
+# }
+# 
+# plot <- ggplot()+
+#   geom_histogram(aes(x=mcf_out,y=after_stat(density)))+
+#   geom_vline(xintercept=mean(bf_out[1,]*bf_out[2,]))+
+#   geom_density(aes(x=out2[,1],weight=out2[,2]),col='red')+
+#   geom_function(fun=f)
+# print(plot)
